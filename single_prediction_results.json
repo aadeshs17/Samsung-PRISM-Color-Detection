@@ -1,0 +1,92 @@
+[
+  {
+    "file": "blue_var0_res0_64x64.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2051.619529724121,
+    "resolution": "64x64",
+    "correct": true
+  },
+  {
+    "file": "blue_var0_res1_128x128.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2044.313907623291,
+    "resolution": "128x128",
+    "correct": true
+  },
+  {
+    "file": "blue_var0_res2_256x256.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2037.7569198608398,
+    "resolution": "256x256",
+    "correct": true
+  },
+  {
+    "file": "blue_var0_res3_512x512.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2052.546977996826,
+    "resolution": "512x512",
+    "correct": true
+  },
+  {
+    "file": "blue_var0_res4_300x100.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2045.4256534576416,
+    "resolution": "300x100",
+    "correct": true
+  },
+  {
+    "file": "blue_var0_res5_100x300.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2040.8706665039062,
+    "resolution": "100x300",
+    "correct": true
+  },
+  {
+    "file": "blue_var0_res6_480x640.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2043.4613227844238,
+    "resolution": "480x640",
+    "correct": true
+  },
+  {
+    "file": "blue_var0_res7_1080x1920.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2061.2056255340576,
+    "resolution": "1080x1920",
+    "correct": true
+  },
+  {
+    "file": "blue_var1_res0_64x64.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2041.7139530181885,
+    "resolution": "64x64",
+    "correct": true
+  },
+  {
+    "file": "blue_var1_res1_128x128.jpg",
+    "expected": "blue",
+    "predicted": "blue",
+    "confidence": 0.9961,
+    "latency": 2030.8849811553955,
+    "resolution": "128x128",
+    "correct": true
+  }
+]

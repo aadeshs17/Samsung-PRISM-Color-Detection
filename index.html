@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrismLens AI — Color Detection with Lighting Cast Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #030712;
+            --surface: rgba(17, 24, 39, 0.8);
+            --border: rgba(255, 255, 255, 0.06);
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --accent: #818cf8;
+            --accent2: #c084fc;
+            --success: #34d399;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glow: 0 0 30px rgba(129, 140, 248, 0.15);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(236, 72, 153, 0.04) 0%, transparent 50%);
+            animation: bgShift 20s ease-in-out infinite;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes bgShift {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(-2%, 1%) rotate(1deg); }
+            66% { transform: translate(1%, -2%) rotate(-1deg); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 0 20px;
+            position: relative;
+        }
+
+        .header .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .header .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: var(--glow);
+        }
+
+        .header h1 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #e2e8f0 0%, #818cf8 40%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            color: var(--muted);
+            font-size: 0.95rem;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            margin-top: 4px;
+        }
+
+        .badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--muted);
+            transition: all 0.2s;
+        }
+
+        .badge:hover {
+            border-color: rgba(129, 140, 248, 0.4);
+            color: var(--text);
+            box-shadow: 0 0 20px rgba(129, 140, 248, 0.1);
+        }
+
+        .badge .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .stat-card {
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px 16px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(129, 140, 248, 0.4), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover::before { opacity: 1; }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(129, 140, 248, 0.3);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #e2e8f0, #a5b4fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-card .label {
+            color: var(--muted);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 4px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        @media (max-width: 1000px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 22px;
+            transition: all 0.3s;
+        }
+
+        .panel:hover {
+            border-color: rgba(129, 140, 248, 0.2);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .panel-header .icon-box {
+            width: 36px;
+            height: 36px;
+            background: var(--glass);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .panel-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--glass);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(129, 140, 248, 0.08), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .upload-area:hover::after { opacity: 1; }
+        .upload-area:hover {
+            border-color: rgba(129, 140, 248, 0.5);
+            box-shadow: inset 0 0 40px rgba(129, 140, 248, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent) !important;
+            background: rgba(129, 140, 248, 0.08) !important;
+            box-shadow: var(--glow) !important;
+        }
+
+        .upload-area input { display: none; }
+
+        .upload-icon {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            filter: grayscale(0.3);
+            transition: all 0.3s;
+        }
+        .upload-area:hover .upload-icon { filter: grayscale(0); transform: scale(1.05); }
+
+        .upload-text {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .upload-hint {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .preview-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .preview-item {
+            position: relative;
+        }
+        .preview-item img {
+            width: 68px;
+            height: 68px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s;
+        }
+        .preview-item img:hover {
+            border-color: #ef4444;
+            transform: scale(1.05);
+        }
+        .preview-item .remove {
+            position: absolute;
+            top: -7px;
+            right: -7px;
+            background: #ef4444;
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.2s;
+            font-weight: 700;
+        }
+        .preview-item:hover .remove { opacity: 1; }
+        .image-count {
+            display: block;
+            text-align: center;
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .btn {
+            padding: 13px 20px;
+            border: none;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 12px;
+            transition: all 0.25s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: transparent;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .result-card {
+            animation: fadeSlide 0.4s ease;
+            padding: 18px;
+            margin-bottom: 14px;
+            background: var(--glass);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+        .result-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .color-preview {
+            width: 100%;
+            height: 56px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .confidence-text {
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-bottom: 10px;
+        }
+
+        /* Color Cast Section */
+        .color-cast-section {
+            border-radius: 12px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+
+        .color-cast-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .color-cast-header .icon {
+            font-size: 1.2rem;
+        }
+        .color-cast-header .title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .color-cast-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .color-cast-strength {
+            font-size: 0.9rem;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .color-cast-note {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        /* Temperature Section */
+        .temperature-section {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            border-radius: 12px;
+            padding: 12px;
+            margin: 12px 0;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        .temperature-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .temperature-header .icon {
+            font-size: 1.2rem;
+        }
+        .temperature-header .title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--info);
+        }
+        .temperature-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+        .temperature-kelvin {
+            font-size: 0.9rem;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .temperature-bar-container {
+            background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+            height: 8px;
+            border-radius: 4px;
+            margin: 10px 0;
+            position: relative;
+        }
+        .temperature-indicator {
+            position: absolute;
+            width: 12px;
+            height: 16px;
+            background: white;
+            border-radius: 2px;
+            top: -4px;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px rgba(255,255,255,0.5);
+        }
+        .temperature-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.6rem;
+            color: var(--muted);
+            margin-top: 5px;
+        }
+        .temp-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        .temp-very-warm { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); }
+        .temp-warm { background: rgba(255, 217, 61, 0.2); color: #ffd93d; border: 1px solid rgba(255, 217, 61, 0.3); }
+        .temp-neutral { background: rgba(107, 203, 119, 0.2); color: #6bcb77; border: 1px solid rgba(107, 203, 119, 0.3); }
+        .temp-cool { background: rgba(77, 150, 255, 0.2); color: #4d96ff; border: 1px solid rgba(77, 150, 255, 0.3); }
+        .temp-very-cool { background: rgba(155, 89, 182, 0.2); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.3); }
+
+        .section-label {
+            font-size: 0.68rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            margin: 16px 0 8px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .rgb-bars { margin: 6px 0; }
+        .rgb-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 7px;
+            gap: 10px;
+        }
+        .rgb-letter {
+            width: 18px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+        .r-letter { color: #f87171; }
+        .g-letter { color: #34d399; }
+        .b-letter { color: #60a5fa; }
+
+        .rgb-track {
+            flex: 1;
+            height: 18px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .rgb-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.7s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: white;
+            min-width: 36px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+        }
+        .fill-r { background: linear-gradient(90deg, #dc2626, #f87171); }
+        .fill-g { background: linear-gradient(90deg, #059669, #34d399); }
+        .fill-b { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+
+        .rgb-num {
+            width: 34px;
+            text-align: right;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--muted);
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .detail-box {
+            background: rgba(255,255,255,0.02);
+            padding: 10px 6px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .detail-lbl {
+            font-size: 0.6rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .detail-val {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .palette-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .swatch {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+        }
+        .swatch:hover {
+            transform: scale(1.25);
+            z-index: 10;
+            border-color: white;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+        }
+        .swatch .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.15);
+            z-index: 20;
+            font-weight: 500;
+        }
+        .swatch:hover .tooltip { display: block; }
+
+        .summary-bar {
+            text-align: center;
+            margin-top: 14px;
+            padding: 12px;
+            background: rgba(99, 102, 241, 0.06);
+            border-radius: 12px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid rgba(99, 102, 241, 0.1);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--success);
+            padding: 14px 22px;
+            border-radius: 14px;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .toast.show {
+            display: block;
+            animation: slideUp 0.35s ease;
+        }
+        .toast.error { border-left-color: #ef4444; }
+        @keyframes slideUp {
+            from { transform: translateY(18px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--muted);
+            padding: 60px 20px;
+        }
+        .empty-state .icon {
+            font-size: 3.5rem;
+            margin-bottom: 14px;
+            opacity: 0.6;
+        }
+        .empty-state p {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">🔮</div>
+                <h1>PrismLens AI</h1>
+            </div>
+            <p class="subtitle">Adaptive Real-Time Color Intelligence with Color Cast & Temperature Detection</p>
+            <div class="badge-row">
+                <span class="badge"><span class="dot"></span> Lightweight CNN</span>
+                <span class="badge">⚡ 6.6 ms Inference</span>
+                <span class="badge">🎯 96-97% Accuracy</span>
+                <span class="badge">📦 222 KB Edge Model</span>
+                <span class="badge">🌈 12 Classes + RGB</span>
+                <span class="badge">💡 Color Cast Detection</span>
+                <span class="badge">🌡️ Temperature Detection</span>
+                <span class="badge">🖼️ Multi‑Resolution</span>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="value">96.8%</div>
+                <div class="label">Test Accuracy</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">6.61 ms</div>
+                <div class="label">Inference Latency</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">178 /s</div>
+                <div class="label">Throughput</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">12</div>
+                <div class="label">Color Classes</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="icon-box">📤</div>
+                    <h3>Upload Images</h3>
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">🎨</div>
+                    <div class="upload-text">Drop images here or click to browse</div>
+                    <div class="upload-hint">JPG · PNG · WebP  |  Any resolution  |  Batch supported</div>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" multiple hidden>
+
+                <div class="preview-grid" id="previewContainer"></div>
+
+                <button class="btn btn-primary" id="predictBtn" disabled onclick="analyzeImages()">
+                    <span>🔍</span> Analyze Colors & Lighting
+                </button>
+                <button class="btn btn-danger" id="clearBtn" disabled onclick="clearAll()">
+                    <span>🗑️</span> Clear All
+                </button>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="icon-box">📊</div>
+                    <h3>Detection Results</h3>
+                </div>
+                <div id="resultsContainer">
+                    <div class="empty-state">
+                        <div class="icon">🧠</div>
+                        <p>Upload images to see color, cast & temperature predictions</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let selectedFiles = [];
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const predictBtn = document.getElementById('predictBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const toast = document.getElementById('toast');
+
+        function getTemperatureClass(category) {
+            const classes = {
+                'very_warm': 'temp-very-warm',
+                'warm': 'temp-warm',
+                'neutral': 'temp-neutral',
+                'cool': 'temp-cool',
+                'very_cool': 'temp-very-cool'
+            };
+            return classes[category] || 'temp-neutral';
+        }
+
+        function getTemperatureEmoji(kelvin) {
+            if (kelvin < 2800) return '🔥';
+            if (kelvin < 3500) return '🌅';
+            if (kelvin < 5000) return '☀️';
+            if (kelvin < 7000) return '⛅';
+            return '❄️';
+        }
+
+        function getTemperatureBarPosition(kelvin) {
+            const minTemp = 2500;
+            const maxTemp = 8000;
+            const position = ((kelvin - minTemp) / (maxTemp - minTemp)) * 100;
+            return Math.min(100, Math.max(0, position));
+        }
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+            fileInput.value = '';
+        });
+
+        function handleFiles(files) {
+            if (!files || files.length === 0) return;
+            selectedFiles = [...selectedFiles, ...Array.from(files)];
+            updatePreview();
+            updateButtons();
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updatePreview();
+            updateButtons();
+        }
+
+        function clearAll() {
+            selectedFiles = [];
+            previewContainer.innerHTML = '';
+            resultsContainer.innerHTML = `<div class="empty-state"><div class="icon">🧠</div><p>Upload images to see color, cast & temperature predictions</p></div>`;
+            updateButtons();
+        }
+
+        function updateButtons() {
+            predictBtn.disabled = selectedFiles.length === 0;
+            clearBtn.disabled = selectedFiles.length === 0;
+        }
+
+        function updatePreview() {
+            previewContainer.innerHTML = '';
+            if (selectedFiles.length === 0) return;
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item';
+                    div.innerHTML = `<img src="${e.target.result}" alt="${file.name}"><span class="remove" onclick="event.stopPropagation();removeFile(${index})">✕</span>`;
+                    previewContainer.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+            const count = document.createElement('span');
+            count.className = 'image-count';
+            count.textContent = `${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} selected`;
+            previewContainer.appendChild(count);
+        }
+
+        async function analyzeImages() {
+            if (selectedFiles.length === 0) return;
+            predictBtn.disabled = true;
+            predictBtn.innerHTML = '<span class="spinner"></span> Analyzing...';
+
+            const formData = new FormData();
+            const fieldName = selectedFiles.length === 1 ? 'file' : 'files';
+            selectedFiles.forEach(f => formData.append(fieldName, f));
+            const endpoint = selectedFiles.length === 1 ? `${API_URL}/predict` : `${API_URL}/predict_batch`;
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch(endpoint, { method: 'POST', body: formData });
+                const elapsed = (performance.now() - startTime).toFixed(0);
+                if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail || `Server error (${response.status})`);
+                const data = await response.json();
+                const predictions = selectedFiles.length === 1 ? [data] : (data.predictions || []);
+                displayResults(predictions, elapsed);
+                showToast('success', `✅ Analysis complete in ${elapsed}ms`);
+            } catch (error) {
+                showToast('error', `❌ ${error.message}`);
+                resultsContainer.innerHTML = `<div class="result-card" style="border-color:rgba(239,68,68,0.3)"><p style="color:#fca5a5">⚠️ ${error.message}</p><p style="color:var(--muted);font-size:0.8rem;margin-top:6px">Check that the API is running on port 8000</p></div>`;
+            }
+            predictBtn.disabled = false;
+            predictBtn.innerHTML = '<span>🔍</span> Analyze Colors & Lighting';
+        }
+
+        function displayResults(predictions, totalTime) {
+            resultsContainer.innerHTML = '';
+            if (!predictions?.length) { 
+                resultsContainer.innerHTML = `<div class="empty-state"><p>No results</p></div>`; 
+                return; 
+            }
+
+            predictions.forEach((pred, idx) => {
+                const cnn = pred.cnn_prediction || {};
+                const rgb = pred.rgb_analysis || {};
+                const temperature = pred.color_temperature || {};
+                const colorCast = pred.color_cast || {};
+                const confidence = cnn.confidence ?? rgb.coverage ?? 0;
+                const hex = pred.rgb_analysis?.hex || '#333';
+                const ratios = rgb.ratios || { red: 33, green: 33, blue: 33 };
+                const rgbValue = rgb.rgb_value || [0,0,0];
+                const coverage = rgb.coverage || 0;
+                const imageSize = rgb.original_size || pred.original_size || 'Unknown';
+                const filename = pred.filename || `Image ${idx+1}`;
+                const palette = rgb.color_palette || [];
+
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.style.animationDelay = `${idx*0.06}s`;
+                
+                // ===============================================
+                // FIXED COLOR CAST SECTION (Handles "none" correctly)
+                // ===============================================
+                let colorCastHtml = '';
+                // CHANGED: using typeof check so 'none' passes through
+                if (colorCast && typeof colorCast.cast_color === 'string') {
+                    // If there IS a cast
+                    if (colorCast.has_cast) {
+                        colorCastHtml = `
+                            <div class="color-cast-section" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(168, 85, 247, 0.2);">
+                                <div class="color-cast-header">
+                                    <div class="icon">💡</div>
+                                    <div class="title" style="color: #c084fc;">COLOR CAST (Lighting Effect)</div>
+                                </div>
+                                <div class="color-cast-value">
+                                    ${colorCast.cast_color.toUpperCase()} Cast
+                                </div>
+                                <div class="color-cast-strength">
+                                    Strength: ${colorCast.cast_strength}%
+                                </div>
+                                <div class="color-cast-note">
+                                    💡 ${colorCast.note}
+                                </div>
+                            </div>
+                        `;
+                    } 
+                    // If there is NO cast (Green Style)
+                    else {
+                        colorCastHtml = `
+                            <div class="color-cast-section" style="background: rgba(52, 211, 153, 0.05); border: 1px solid rgba(52, 211, 153, 0.2);">
+                                <div class="color-cast-header">
+                                    <div class="icon" style="color: #34d399;">✅</div>
+                                    <div class="title" style="color: #34d399;">COLOR CAST (Lighting Effect)</div>
+                                </div>
+                                <div class="color-cast-value" style="color: #34d399;">
+                                    No Significant Cast
+                                </div>
+                                <div class="color-cast-note">
+                                    💡 ${colorCast.note}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Temperature Section
+                let temperatureHtml = '';
+                if (temperature && temperature.temperature_name) {
+                    const tempClass = getTemperatureClass(temperature.temperature_category);
+                    const tempEmoji = getTemperatureEmoji(temperature.kelvin);
+                    const barPosition = getTemperatureBarPosition(temperature.kelvin);
+                    
+                    temperatureHtml = `
+                        <div class="temperature-section">
+                            <div class="temperature-header">
+                                <div class="icon">🌡️</div>
+                                <div class="title">COLOR TEMPERATURE</div>
+                            </div>
+                            <div class="temperature-value">
+                                ${tempEmoji} ${temperature.temperature_name}
+                            </div>
+                            <div class="temperature-kelvin">
+                                ${temperature.kelvin}K · Confidence: ${temperature.confidence}%
+                            </div>
+                            <div class="temperature-bar-container">
+                                <div class="temperature-indicator" style="left: ${barPosition}%"></div>
+                            </div>
+                            <div class="temperature-labels">
+                                <span>🔥 Warm</span>
+                                <span>🌡️</span>
+                                <span>❄️ Cool</span>
+                            </div>
+                            <div class="temp-badge ${tempClass}">
+                                R/G Ratio: ${temperature.ratios?.red_green_ratio || 'N/A'} · 
+                                B/G Ratio: ${temperature.ratios?.blue_green_ratio || 'N/A'}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                card.innerHTML = `
+                    <div class="color-preview" style="background:${hex}"></div>
+                    <div class="confidence-text">Color Confidence ${Number(confidence).toFixed(1)}%${coverage ? ` · Coverage ${coverage.toFixed(1)}%` : ''}</div>
+                    ${colorCastHtml}
+                    ${temperatureHtml}
+                    <div class="section-label">📐 RGB Ratio Analysis</div>
+                    <div class="rgb-bars">
+                        ${['red','green','blue'].map((ch,i)=>{const l=ch[0].toUpperCase();const cls=`fill-${l.toLowerCase()}`;const lt=`${l.toLowerCase()}-letter`;return `<div class="rgb-row"><span class="rgb-letter ${lt}">${l}</span><div class="rgb-track"><div class="rgb-fill ${cls}" style="width:${Math.max(ratios[ch],2)}%">${ratios[ch].toFixed(1)}%</div></div><span class="rgb-num">${rgbValue[i]||0}</span></div>`}).join('')}
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-box"><div class="detail-lbl">Hex</div><div class="detail-val" style="font-family:monospace">${hex}</div></div>
+                        <div class="detail-box"><div class="detail-lbl">Size</div><div class="detail-val">${imageSize}</div></div>
+                        <div class="detail-box"><div class="detail-lbl">File</div><div class="detail-val" style="font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${filename}">${filename.substring(0, 20)}...</div></div>
+                    </div>
+                    ${palette.length ? `<div class="section-label">🎨 Color Palette</div><div class="palette-row">${palette.map(c=>`<div class="swatch" style="background:${c.hex}"><span class="tooltip">${c.name||'color'}: ${c.percentage}%</span></div>`).join('')}</div>` : ''}
+                `;
+                resultsContainer.appendChild(card);
+            });
+
+            if (predictions.length > 1) {
+                const summary = document.createElement('div');
+                summary.className = 'summary-bar';
+                summary.textContent = `📊 ${predictions.length} images processed in ${totalTime}ms  (≈${(totalTime/predictions.length).toFixed(1)}ms each)`;
+                resultsContainer.appendChild(summary);
+            }
+        }
+
+        function showToast(type, msg) {
+            toast.className = `toast ${type} show`;
+            toast.textContent = msg;
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => toast.classList.remove('show'), 3200);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter' && !predictBtn.disabled) { e.preventDefault(); analyzeImages(); }
+        });
+
+        console.log('🔮 PrismLens AI Frontend Ready - Color Cast Detection Enabled');
+    </script>
+</body>
+</html>  
